@@ -73,16 +73,31 @@ class VTKVisualizationWidget(QWidget):
             scalar_bar.SetTitle(title)
             scalar_bar.SetNumberOfLabels(4)
             
-            # Position and size - much smaller
-            scalar_bar.SetPosition(0.92, 0.15)  # Far right side
-            scalar_bar.SetWidth(0.06)           # Much narrower
-            scalar_bar.SetHeight(0.4)           # Much shorter
+            # Position and size - improved readability
+            scalar_bar.SetPosition(0.88, 0.2)   # Slightly more inward for better visibility
+            scalar_bar.SetWidth(0.1)            # Wider for better readability
+            scalar_bar.SetHeight(0.6)           # Taller for better proportion
             
-            # Style - much smaller fonts
-            scalar_bar.GetTitleTextProperty().SetColor(1, 1, 1)  # White text
-            scalar_bar.GetLabelTextProperty().SetColor(1, 1, 1)
-            scalar_bar.GetTitleTextProperty().SetFontSize(8)     # Much smaller
-            scalar_bar.GetLabelTextProperty().SetFontSize(6)     # Much smaller
+            # Enhanced font styling for better readability
+            title_prop = scalar_bar.GetTitleTextProperty()
+            label_prop = scalar_bar.GetLabelTextProperty()
+            
+            # Title styling
+            title_prop.SetColor(1, 1, 1)        # White text
+            title_prop.SetFontSize(16)          # Much larger and readable
+            title_prop.SetFontFamilyToArial()   # Clean, modern font
+            title_prop.BoldOn()                 # Bold for emphasis
+            title_prop.ShadowOn()               # Add shadow for better contrast
+            
+            # Label styling  
+            label_prop.SetColor(1, 1, 1)        # White text
+            label_prop.SetFontSize(14)          # Larger and readable
+            label_prop.SetFontFamilyToArial()   # Clean, modern font
+            label_prop.ShadowOn()               # Add shadow for better contrast
+            
+            # Additional scalar bar formatting
+            scalar_bar.SetNumberOfLabels(6)     # More labels for better precision
+            scalar_bar.SetLabelFormat("%.2f")   # Two decimal places
             
             self.scalar_bar_actor = scalar_bar
             self.renderer.AddActor2D(self.scalar_bar_actor)
@@ -160,26 +175,52 @@ class ControlPanel(QWidget):
         
         # Opacity controls group
         opacity_group = QGroupBox("Opacity Transfer Function")
-        opacity_layout = QGridLayout()
+        opacity_layout = QVBoxLayout()
+        
+        # Create min/max labels at the top
+        minmax_layout = QHBoxLayout()
+        self.left_label = QLabel("Min")
+        self.left_label.setAlignment(Qt.AlignLeft)
+        self.left_label.setStyleSheet("font-weight: bold; color: blue;")
+
+        self.right_label = QLabel("Max")
+        self.right_label.setAlignment(Qt.AlignRight)
+        self.right_label.setStyleSheet("font-weight: bold; color: red;")
+        
+        minmax_layout.addWidget(self.left_label)
+        minmax_layout.addStretch()  # Push labels to opposite sides
+        minmax_layout.addWidget(self.right_label)
+        
+        opacity_layout.addLayout(minmax_layout)
+        
+        # Create horizontal layout for sliders
+        sliders_layout = QHBoxLayout()
         
         self.opacity_sliders = []
         self.opacity_labels = []
         
-        for i in range(9):
-            label = QLabel(f"Level {i}:")
-            slider = QSlider(Qt.Horizontal)
+        for i in range(18):
+            # Create vertical layout for each slider
+            slider_column = QVBoxLayout()
+            
+            # Value label at top            
+            # Vertical slider
+            slider = QSlider(Qt.Vertical)
             slider.setMinimum(0)
             slider.setMaximum(100)
             slider.setValue(10)  # Default value
-            value_label = QLabel("0.10")
+            slider.setFixedHeight(150)  # Set consistent height
+            slider.setMinimumWidth(30)  # Set consistent width
+            slider_column.addWidget(slider)
             
-            opacity_layout.addWidget(label, i, 0)
-            opacity_layout.addWidget(slider, i, 1)
-            opacity_layout.addWidget(value_label, i, 2)
+            # Level label at bottom
+                        
+            # Add to horizontal layout
+            sliders_layout.addLayout(slider_column)
             
             self.opacity_sliders.append(slider)
-            self.opacity_labels.append(value_label)
         
+        opacity_layout.addLayout(sliders_layout)
         opacity_group.setLayout(opacity_layout)
         layout.addWidget(opacity_group)
         
@@ -223,6 +264,17 @@ class ControlPanel(QWidget):
         colormap_layout.addWidget(self.colormap_combo)
         render_layout.addLayout(colormap_layout)
         
+        # Target cells for resampling
+        target_cells_layout = QHBoxLayout()
+        target_cells_layout.addWidget(QLabel("Target Cells:"))
+        self.target_cells_spinbox = QSpinBox()
+        self.target_cells_spinbox.setRange(10000, 2000000)
+        self.target_cells_spinbox.setValue(500000)
+        self.target_cells_spinbox.setSuffix(" cells")
+        self.target_cells_spinbox.setSingleStep(50000)
+        target_cells_layout.addWidget(self.target_cells_spinbox)
+        render_layout.addLayout(target_cells_layout)
+        
         # Show bounds checkbox
         self.show_bounds_checkbox = QCheckBox("Show Bounds")
         self.show_bounds_checkbox.setChecked(True)
@@ -240,6 +292,11 @@ class ControlPanel(QWidget):
         button_layout = QHBoxLayout()
         self.apply_button = QPushButton("Apply Changes")
         self.reset_button = QPushButton("Reset Camera")
+        
+        # Set fixed size for all buttons to make them uniform
+        button_size = (120, 35)
+        self.apply_button.setFixedSize(*button_size)
+        self.reset_button.setFixedSize(*button_size)
         
         # Initialize dirty flag and button styles
         self._is_dirty = False
@@ -302,7 +359,7 @@ class ControlPanel(QWidget):
         self._is_dirty = dirty
         if dirty:
             self.apply_button.setStyleSheet(self._dirty_style)
-            self.apply_button.setText("Apply Changes *")
+            self.apply_button.setText("Apply Changes")
         else:
             self.apply_button.setStyleSheet(self._clean_style)
             self.apply_button.setText("Apply Changes")
@@ -325,6 +382,7 @@ class ControlPanel(QWidget):
             spinbox.valueChanged.connect(self.on_parameter_changed)
         
         self.colormap_combo.currentTextChanged.connect(self.on_parameter_changed)
+        self.target_cells_spinbox.valueChanged.connect(self.on_parameter_changed)
         self.show_bounds_checkbox.toggled.connect(self.on_parameter_changed)
         self.show_colorbar_checkbox.toggled.connect(self.on_parameter_changed)
         
@@ -343,9 +401,7 @@ class ControlPanel(QWidget):
     
     def on_opacity_changed(self):
         """Handle opacity slider changes - update labels only"""
-        for i, slider in enumerate(self.opacity_sliders):
-            value = slider.value() / 100.0
-            self.opacity_labels[i].setText(f"{value:.2f}")
+        pass
     
     def on_bounds_changed(self):
         """Handle bounds spinbox changes - no immediate action"""
@@ -397,6 +453,10 @@ class ControlPanel(QWidget):
         """Get current colormap selection"""
         return self.colormap_combo.currentText()
     
+    def get_target_cells(self):
+        """Get current target cells value"""
+        return self.target_cells_spinbox.value()
+    
     def is_show_bounds_enabled(self):
         """Get show bounds checkbox state"""
         return self.show_bounds_checkbox.isChecked()
@@ -408,6 +468,11 @@ class ControlPanel(QWidget):
     def get_current_frame(self):
         """Get current frame value from slider"""
         return self.frame_slider.value()
+    
+    def update_minmax_labels(self, global_min, global_max):
+        """Update the min/max labels with actual data range values"""
+        self.left_label.setText(f"{global_min:.3f}")
+        self.right_label.setText(f"{global_max:.3f}")
 
 
 class DamVisualizationApp(QMainWindow):
@@ -424,9 +489,10 @@ class DamVisualizationApp(QMainWindow):
         self.current_color_function = None
         
         # Visualization parameters
-        self.opacity = [0.1, 0.2, 1.0, 0.9, 0.2, 0.1, 0.0, 0.0, 0.0]
+        self.opacity = [0.0, 0.05, 0.1, 0.15, 0.2, 0.4, 0.6, 0.8, 1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.0, 0.0]
         self.bounds = [2, 17, 2, 22, 22, 27]
         self.colormap = 'RdYlBu_r'
+        self.target_cells = 500000
         self.show_bounds = True
         self.show_colorbar = True
         self.global_min = -0.189
@@ -461,12 +527,14 @@ class DamVisualizationApp(QMainWindow):
         
         # Control panel
         self.control_panel = ControlPanel()
-        self.control_panel.setMaximumWidth(350)
-        self.control_panel.setMinimumWidth(300)
+        self.control_panel.setMaximumWidth(600)
+        self.control_panel.setMinimumWidth(400)
+        # Initialize min/max labels with global data range
+        self.control_panel.update_minmax_labels(self.global_min, self.global_max)
         splitter.addWidget(self.control_panel)
         
         # Set splitter proportions
-        splitter.setSizes([1000, 350])
+        splitter.setSizes([1000, 400])
         
         main_layout.addWidget(splitter)
         central_widget.setLayout(main_layout)
@@ -535,6 +603,7 @@ class DamVisualizationApp(QMainWindow):
             self.control_panel.set_frame_range(min_frame, max_frame)
             self.control_panel.set_opacity_values(self.opacity)
             self.control_panel.set_bounds_values(self.bounds)
+            self.control_panel.update_minmax_labels(self.global_min, self.global_max)
             
             # Set initial frame but don't load until Apply is clicked
             self.control_panel.frame_slider.setValue(min_frame)
@@ -564,7 +633,7 @@ class DamVisualizationApp(QMainWindow):
             clipped = mesh.clip_box(bounds=self.bounds, invert=False)
             
             # Resample to uniform grid
-            resampled = dvu.resample_to_uniform_grid(clipped, target_cells=500_000)  # Reduced for better performance
+            resampled = dvu.resample_to_uniform_grid(clipped, target_cells=self.target_cells)
             resampled.set_active_scalars('Resistivity(log10)')
             
             # Convert PyVista mesh to VTK ImageData for volume rendering
@@ -600,13 +669,49 @@ class DamVisualizationApp(QMainWindow):
                 color_func.AddRGBPoint(self.global_min + 0.7 * (self.global_max - self.global_min), 1.0, 0.5, 0.0)  # Orange
                 color_func.AddRGBPoint(self.global_max, 1.0, 0.0, 0.0)  # Red
             elif self.colormap == 'viridis':
+                # Viridis colormap
                 color_func.AddRGBPoint(self.global_min, 0.267, 0.004, 0.329)  # Dark purple
+                color_func.AddRGBPoint(self.global_min + 0.25 * (self.global_max - self.global_min), 0.229, 0.322, 0.545)  # Purple-blue
                 color_func.AddRGBPoint(self.global_min + 0.5 * (self.global_max - self.global_min), 0.127, 0.566, 0.550)  # Teal
+                color_func.AddRGBPoint(self.global_min + 0.75 * (self.global_max - self.global_min), 0.369, 0.788, 0.382)  # Green
                 color_func.AddRGBPoint(self.global_max, 0.993, 0.906, 0.144)  # Yellow
+            elif self.colormap == 'plasma':
+                # Plasma colormap
+                color_func.AddRGBPoint(self.global_min, 0.050, 0.030, 0.529)  # Dark blue
+                color_func.AddRGBPoint(self.global_min + 0.25 * (self.global_max - self.global_min), 0.494, 0.016, 0.655)  # Purple
+                color_func.AddRGBPoint(self.global_min + 0.5 * (self.global_max - self.global_min), 0.808, 0.067, 0.472)  # Magenta
+                color_func.AddRGBPoint(self.global_min + 0.75 * (self.global_max - self.global_min), 0.965, 0.451, 0.176)  # Orange
+                color_func.AddRGBPoint(self.global_max, 0.984, 0.906, 0.145)  # Yellow
+            elif self.colormap == 'inferno':
+                # Inferno colormap
+                color_func.AddRGBPoint(self.global_min, 0.000, 0.000, 0.014)  # Almost black
+                color_func.AddRGBPoint(self.global_min + 0.25 * (self.global_max - self.global_min), 0.341, 0.062, 0.429)  # Dark purple
+                color_func.AddRGBPoint(self.global_min + 0.5 * (self.global_max - self.global_min), 0.733, 0.216, 0.329)  # Red
+                color_func.AddRGBPoint(self.global_min + 0.75 * (self.global_max - self.global_min), 0.976, 0.576, 0.176)  # Orange
+                color_func.AddRGBPoint(self.global_max, 0.988, 0.998, 0.645)  # Light yellow
+            elif self.colormap == 'jet':
+                # Jet colormap (traditional blue-cyan-yellow-red)
+                color_func.AddRGBPoint(self.global_min, 0.0, 0.0, 0.5)  # Dark blue
+                color_func.AddRGBPoint(self.global_min + 0.2 * (self.global_max - self.global_min), 0.0, 0.0, 1.0)  # Blue
+                color_func.AddRGBPoint(self.global_min + 0.4 * (self.global_max - self.global_min), 0.0, 1.0, 1.0)  # Cyan
+                color_func.AddRGBPoint(self.global_min + 0.6 * (self.global_max - self.global_min), 1.0, 1.0, 0.0)  # Yellow
+                color_func.AddRGBPoint(self.global_min + 0.8 * (self.global_max - self.global_min), 1.0, 0.0, 0.0)  # Red
+                color_func.AddRGBPoint(self.global_max, 0.5, 0.0, 0.0)  # Dark red
+            elif self.colormap == 'rainbow':
+                # Rainbow colormap (spectral colors)
+                color_func.AddRGBPoint(self.global_min, 0.5, 0.0, 1.0)  # Purple
+                color_func.AddRGBPoint(self.global_min + 0.17 * (self.global_max - self.global_min), 0.0, 0.0, 1.0)  # Blue
+                color_func.AddRGBPoint(self.global_min + 0.33 * (self.global_max - self.global_min), 0.0, 1.0, 1.0)  # Cyan
+                color_func.AddRGBPoint(self.global_min + 0.5 * (self.global_max - self.global_min), 0.0, 1.0, 0.0)  # Green
+                color_func.AddRGBPoint(self.global_min + 0.67 * (self.global_max - self.global_min), 1.0, 1.0, 0.0)  # Yellow
+                color_func.AddRGBPoint(self.global_min + 0.83 * (self.global_max - self.global_min), 1.0, 0.5, 0.0)  # Orange
+                color_func.AddRGBPoint(self.global_max, 1.0, 0.0, 0.0)  # Red
             else:
-                # Default colormap
+                # Default fallback to RdYlBu_r if unknown colormap
                 color_func.AddRGBPoint(self.global_min, 0.0, 0.0, 1.0)  # Blue
-                color_func.AddRGBPoint((self.global_min + self.global_max) * 0.5, 1.0, 1.0, 0.0)  # Yellow
+                color_func.AddRGBPoint(self.global_min + 0.3 * (self.global_max - self.global_min), 0.0, 1.0, 1.0)  # Cyan
+                color_func.AddRGBPoint(self.global_min + 0.5 * (self.global_max - self.global_min), 1.0, 1.0, 0.0)  # Yellow
+                color_func.AddRGBPoint(self.global_min + 0.7 * (self.global_max - self.global_min), 1.0, 0.5, 0.0)  # Orange
                 color_func.AddRGBPoint(self.global_max, 1.0, 0.0, 0.0)  # Red
             
             volume_property.SetColor(color_func)
@@ -785,6 +890,7 @@ class DamVisualizationApp(QMainWindow):
         self.opacity = self.control_panel.get_opacity_values()
         self.bounds = self.control_panel.get_bounds_values()
         self.colormap = self.control_panel.get_colormap()
+        self.target_cells = self.control_panel.get_target_cells()
         self.show_bounds = self.control_panel.is_show_bounds_enabled()
         self.show_colorbar = self.control_panel.is_show_colorbar_enabled()
         current_frame = self.control_panel.get_current_frame()
