@@ -15,6 +15,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # Launch the application
-python3 qt_dam_visualizer.py
+vglrun python3 qt_dam_visualizer.py
 
 echo "Application closed."
