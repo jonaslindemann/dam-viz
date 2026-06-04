@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QHBoxLayout, QGridLayout, QSlider, QLabel, QPushButton, 
                             QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox,
                             QFileDialog, QMessageBox, QCheckBox, QProgressBar,
-                            QSplitter, QFrame, QRadioButton)
+                            QSplitter, QFrame, QRadioButton, QTabWidget)
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QPalette
@@ -238,6 +238,52 @@ class ControlPanel(QWidget):
         """Set up the control panel UI"""
         layout = QVBoxLayout()
         
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        
+        # Create tabs
+        self.frame_tab = self.create_frame_tab()
+        self.opacity_tab = self.create_opacity_tab()
+        self.render_tab = self.create_render_tab()
+        
+        # Add tabs to tab widget
+        self.tab_widget.addTab(self.render_tab, "Rendering")
+        self.tab_widget.addTab(self.opacity_tab, "Opacity")
+        self.tab_widget.addTab(self.frame_tab, "Frame")
+        
+        layout.addWidget(self.tab_widget)
+        
+        # Control buttons (below tabs)
+        button_layout = QHBoxLayout()
+        self.apply_button = QPushButton("Apply Changes")
+        self.reset_button = QPushButton("Reset Camera")
+        
+        # Set fixed size for all buttons to make them uniform
+        button_size = (120, 35)
+        self.apply_button.setFixedSize(*button_size)
+        self.reset_button.setFixedSize(*button_size)
+        
+        # Initialize dirty flag and button styles
+        self._is_dirty = False
+        self._setup_button_styles()
+        
+        button_layout.addWidget(self.apply_button)
+        button_layout.addWidget(self.reset_button)
+        layout.addLayout(button_layout)
+        
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
+        
+        layout.addStretch()
+        self.setLayout(layout)
+    
+    def create_frame_tab(self):
+        """Create the Frame Selection tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        
         # Frame selection group
         frame_group = QGroupBox("Frame Selection")
         frame_layout = QVBoxLayout()
@@ -248,16 +294,24 @@ class ControlPanel(QWidget):
         self.frame_slider.setValue(0)
         
         self.frame_label = QLabel("Frame: 0")
-
         self.frame_video_button = QPushButton("Create Video")
-        self.frame_video_button.setEnabled(True)  # Initially enabled
-
+        self.frame_video_button.setEnabled(True)
+        
         frame_layout.addWidget(self.frame_label)
         frame_layout.addWidget(self.frame_slider)
         frame_layout.addWidget(self.frame_video_button)
-
+        
         frame_group.setLayout(frame_layout)
         layout.addWidget(frame_group)
+        layout.addStretch()
+        
+        tab.setLayout(layout)
+        return tab
+    
+    def create_opacity_tab(self):
+        """Create the Opacity Transfer Function tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
         
         # Opacity controls group
         opacity_group = QGroupBox("Opacity Transfer Function")
@@ -268,13 +322,13 @@ class ControlPanel(QWidget):
         self.left_label = QLabel("Min")
         self.left_label.setAlignment(Qt.AlignLeft)
         self.left_label.setStyleSheet("font-weight: bold; color: blue;")
-
+        
         self.right_label = QLabel("Max")
         self.right_label.setAlignment(Qt.AlignRight)
         self.right_label.setStyleSheet("font-weight: bold; color: red;")
         
         minmax_layout.addWidget(self.left_label)
-        minmax_layout.addStretch()  # Push labels to opposite sides
+        minmax_layout.addStretch()
         minmax_layout.addWidget(self.right_label)
         
         opacity_layout.addLayout(minmax_layout)
@@ -286,24 +340,17 @@ class ControlPanel(QWidget):
         self.opacity_labels = []
         
         for i in range(18):
-            # Create vertical layout for each slider
             slider_column = QVBoxLayout()
             
-            # Value label at top            
-            # Vertical slider
             slider = QSlider(Qt.Vertical)
             slider.setMinimum(0)
             slider.setMaximum(100)
-            slider.setValue(10)  # Default value
-            slider.setFixedHeight(150)  # Set consistent height
-            slider.setMinimumWidth(30)  # Set consistent width
+            slider.setValue(10)
+            slider.setFixedHeight(150)
+            slider.setMinimumWidth(30)
             slider_column.addWidget(slider)
             
-            # Level label at bottom
-                        
-            # Add to horizontal layout
             sliders_layout.addLayout(slider_column)
-            
             self.opacity_sliders.append(slider)
         
         opacity_layout.addLayout(sliders_layout)
@@ -311,14 +358,12 @@ class ControlPanel(QWidget):
         # Opacity preset controls
         presets_layout = QHBoxLayout()
         
-        # Create preset buttons
         self.preset_full_btn = QPushButton("Full")
         self.preset_linear_up_btn = QPushButton("Linear Up")
         self.preset_linear_down_btn = QPushButton("Linear Down")
         self.preset_max_middle_btn = QPushButton("Max Middle")
         self.preset_max_sides_btn = QPushButton("Max Sides")
         
-        # Set fixed size for all preset buttons
         preset_button_size = (70, 25)
         self.preset_full_btn.setFixedSize(*preset_button_size)
         self.preset_linear_up_btn.setFixedSize(*preset_button_size)
@@ -326,13 +371,12 @@ class ControlPanel(QWidget):
         self.preset_max_middle_btn.setFixedSize(*preset_button_size)
         self.preset_max_sides_btn.setFixedSize(*preset_button_size)
         
-        # Add buttons to layout
         presets_layout.addWidget(self.preset_full_btn)
         presets_layout.addWidget(self.preset_linear_up_btn)
         presets_layout.addWidget(self.preset_linear_down_btn)
         presets_layout.addWidget(self.preset_max_middle_btn)
         presets_layout.addWidget(self.preset_max_sides_btn)
-        presets_layout.addStretch()  # Push buttons to the left
+        presets_layout.addStretch()
         
         opacity_layout.addLayout(presets_layout)
         opacity_group.setLayout(opacity_layout)
@@ -364,6 +408,15 @@ class ControlPanel(QWidget):
         
         bounds_group.setLayout(bounds_layout)
         layout.addWidget(bounds_group)
+        layout.addStretch()
+        
+        tab.setLayout(layout)
+        return tab
+    
+    def create_render_tab(self):
+        """Create the Rendering Options tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
         
         # Rendering controls group
         render_group = QGroupBox("Rendering Options")
@@ -382,7 +435,7 @@ class ControlPanel(QWidget):
         scalars_layout = QHBoxLayout()
         scalars_layout.addWidget(QLabel("Active Scalars:"))
         self.active_scalars_combo = QComboBox()
-        self.active_scalars_combo.addItems(['Resistivity(log10)'])  # Default item, will be updated when data loads
+        self.active_scalars_combo.addItems(['Resistivity(log10)'])
         self.active_scalars_combo.setCurrentText('Resistivity(log10)')
         scalars_layout.addWidget(self.active_scalars_combo)
         render_layout.addLayout(scalars_layout)
@@ -395,7 +448,7 @@ class ControlPanel(QWidget):
         min_range_layout.addWidget(QLabel("Data Min:"))
         self.data_min_spinbox = QDoubleSpinBox()
         self.data_min_spinbox.setRange(-10000, 10000)
-        self.data_min_spinbox.setValue(0.0)  # Will be set to actual data min when data loads
+        self.data_min_spinbox.setValue(0.0)
         self.data_min_spinbox.setDecimals(3)
         self.data_min_spinbox.setSingleStep(0.1)
         min_range_layout.addWidget(self.data_min_spinbox)
@@ -412,7 +465,7 @@ class ControlPanel(QWidget):
         max_range_layout.addWidget(QLabel("Data Max:"))
         self.data_max_spinbox = QDoubleSpinBox()
         self.data_max_spinbox.setRange(-10000, 10000)
-        self.data_max_spinbox.setValue(1.0)  # Will be set to actual data max when data loads
+        self.data_max_spinbox.setValue(1.0)
         self.data_max_spinbox.setDecimals(3)
         self.data_max_spinbox.setSingleStep(0.1)
         max_range_layout.addWidget(self.data_max_spinbox)
@@ -434,7 +487,16 @@ class ControlPanel(QWidget):
         
         render_layout.addLayout(range_group_layout)
         
-        # Target cells for resampling
+        # Resampling controls group
+        resample_group_layout = QVBoxLayout()
+        
+        # Enable resampling checkbox
+        self.enable_resampling_checkbox = QCheckBox("Enable Resampling (for unstructured meshes)")
+        self.enable_resampling_checkbox.setChecked(True)
+        self.enable_resampling_checkbox.setToolTip("Resample unstructured mesh to uniform grid for volume rendering. Disable to use unstructured grid directly.")
+        resample_group_layout.addWidget(self.enable_resampling_checkbox)
+        
+        # Target cells for resampling (only enabled when resampling is on)
         target_cells_layout = QHBoxLayout()
         target_cells_layout.addWidget(QLabel("Target Cells:"))
         self.target_cells_spinbox = QSpinBox()
@@ -443,7 +505,9 @@ class ControlPanel(QWidget):
         self.target_cells_spinbox.setSuffix(" cells")
         self.target_cells_spinbox.setSingleStep(50000)
         target_cells_layout.addWidget(self.target_cells_spinbox)
-        render_layout.addLayout(target_cells_layout)
+        resample_group_layout.addLayout(target_cells_layout)
+        
+        render_layout.addLayout(resample_group_layout)
         
         # Lighting quality selection
         lighting_layout = QHBoxLayout()
@@ -466,56 +530,58 @@ class ControlPanel(QWidget):
         render_layout.addWidget(self.auto_hide_volume_checkbox)
         
         # Isosurface controls
-        isosurface_group_layout = QVBoxLayout()
+        isosurface_group = QGroupBox("Isosurface Controls")
+        isosurface_layout = QVBoxLayout()
         
         # Enable isosurfaces checkbox
         self.show_isosurfaces_checkbox = QCheckBox("Show Isosurfaces")
         self.show_isosurfaces_checkbox.setChecked(False)
-        isosurface_group_layout.addWidget(self.show_isosurfaces_checkbox)
+        isosurface_layout.addWidget(self.show_isosurfaces_checkbox)
         
         # Isosurface mode selection
         iso_mode_layout = QHBoxLayout()
         iso_mode_layout.addWidget(QLabel("Mode:"))
         self.iso_single_radio = QRadioButton("Single Value")
         self.iso_multiple_radio = QRadioButton("Multiple Surfaces")
-        self.iso_single_radio.setChecked(True)  # Default to single value
+        self.iso_single_radio.setChecked(True)
         iso_mode_layout.addWidget(self.iso_single_radio)
         iso_mode_layout.addWidget(self.iso_multiple_radio)
-        isosurface_group_layout.addLayout(iso_mode_layout)
+        isosurface_layout.addLayout(iso_mode_layout)
         
         # Single isosurface value control
         iso_value_layout = QHBoxLayout()
         iso_value_layout.addWidget(QLabel("Iso Value:"))
         self.iso_value_spinbox = QDoubleSpinBox()
         self.iso_value_spinbox.setRange(-10000, 10000)
-        self.iso_value_spinbox.setValue(2.0)  # Default isosurface value
+        self.iso_value_spinbox.setValue(2.0)
         self.iso_value_spinbox.setDecimals(3)
         self.iso_value_spinbox.setSingleStep(0.1)
         iso_value_layout.addWidget(self.iso_value_spinbox)
-        isosurface_group_layout.addLayout(iso_value_layout)
+        isosurface_layout.addLayout(iso_value_layout)
         
         # Multiple isosurfaces number control
         iso_num_layout = QHBoxLayout()
         iso_num_layout.addWidget(QLabel("Num Surfaces:"))
         self.iso_num_spinbox = QSpinBox()
         self.iso_num_spinbox.setRange(2, 20)
-        self.iso_num_spinbox.setValue(5)  # Default number of surfaces
-        self.iso_num_spinbox.setEnabled(False)  # Disabled by default (single mode)
+        self.iso_num_spinbox.setValue(5)
+        self.iso_num_spinbox.setEnabled(False)
         iso_num_layout.addWidget(self.iso_num_spinbox)
-        isosurface_group_layout.addLayout(iso_num_layout)
+        isosurface_layout.addLayout(iso_num_layout)
         
         # Isosurface opacity control
         iso_opacity_layout = QHBoxLayout()
         iso_opacity_layout.addWidget(QLabel("Iso Opacity:"))
         self.iso_opacity_spinbox = QDoubleSpinBox()
         self.iso_opacity_spinbox.setRange(0.0, 1.0)
-        self.iso_opacity_spinbox.setValue(0.8)  # Default opacity
+        self.iso_opacity_spinbox.setValue(0.8)
         self.iso_opacity_spinbox.setDecimals(2)
         self.iso_opacity_spinbox.setSingleStep(0.1)
         iso_opacity_layout.addWidget(self.iso_opacity_spinbox)
-        isosurface_group_layout.addLayout(iso_opacity_layout)
+        isosurface_layout.addLayout(iso_opacity_layout)
         
-        render_layout.addLayout(isosurface_group_layout)
+        isosurface_group.setLayout(isosurface_layout)
+        render_layout.addWidget(isosurface_group)
         
         # Show bounds checkbox
         self.show_bounds_checkbox = QCheckBox("Show Bounds")
@@ -529,32 +595,10 @@ class ControlPanel(QWidget):
         
         render_group.setLayout(render_layout)
         layout.addWidget(render_group)
-        
-        # Control buttons
-        button_layout = QHBoxLayout()
-        self.apply_button = QPushButton("Apply Changes")
-        self.reset_button = QPushButton("Reset Camera")
-        
-        # Set fixed size for all buttons to make them uniform
-        button_size = (120, 35)
-        self.apply_button.setFixedSize(*button_size)
-        self.reset_button.setFixedSize(*button_size)
-        
-        # Initialize dirty flag and button styles
-        self._is_dirty = False
-        self._setup_button_styles()
-        
-        button_layout.addWidget(self.apply_button)
-        button_layout.addWidget(self.reset_button)
-        layout.addLayout(button_layout)
-        
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-        
         layout.addStretch()
-        self.setLayout(layout)
+        
+        tab.setLayout(layout)
+        return tab
     
     def _setup_button_styles(self):
         """Set up button styles for clean and dirty states"""
@@ -629,6 +673,8 @@ class ControlPanel(QWidget):
         self.data_max_spinbox.valueChanged.connect(self.on_parameter_changed)
         self.data_min_spinbox.valueChanged.connect(self.on_data_range_changed)
         self.data_max_spinbox.valueChanged.connect(self.on_data_range_changed)
+        self.enable_resampling_checkbox.toggled.connect(self.on_resampling_toggled)
+        self.enable_resampling_checkbox.toggled.connect(self.on_parameter_changed)
         self.target_cells_spinbox.valueChanged.connect(self.on_parameter_changed)
         self.lighting_combo.currentTextChanged.connect(self.on_parameter_changed)
         self.show_volume_checkbox.toggled.connect(self.on_parameter_changed)
@@ -683,6 +729,11 @@ class ControlPanel(QWidget):
         
         # Update the min/max labels above the sliders
         self.update_minmax_labels(current_min, current_max)
+    
+    def on_resampling_toggled(self):
+        """Handle resampling checkbox toggle - enable/disable target cells control"""
+        is_enabled = self.enable_resampling_checkbox.isChecked()
+        self.target_cells_spinbox.setEnabled(is_enabled)
     
     def on_iso_mode_changed(self):
         """Handle isosurface mode change - enable/disable appropriate controls"""
@@ -812,6 +863,10 @@ class ControlPanel(QWidget):
         """Get current data maximum value"""
         return self.data_max_spinbox.value()
     
+    def is_resampling_enabled(self):
+        """Get resampling checkbox state"""
+        return self.enable_resampling_checkbox.isChecked()
+    
     def is_show_bounds_enabled(self):
         """Get show bounds checkbox state"""
         return self.show_bounds_checkbox.isChecked()
@@ -915,6 +970,7 @@ class DamVisualizationApp(QMainWindow):
         self.colormap = 'RdYlBu_r'
         self.active_scalars = 'Resistivity(log10)'
         self.target_cells = 500000
+        self.enable_resampling = True
         self.show_bounds = True
         self.show_colorbar = True
         self.show_volume = True
@@ -934,8 +990,13 @@ class DamVisualizationApp(QMainWindow):
         
         # Try to load default data location
         default_path = "/home/bmjl/lu2023-17-17/Inversion_RealData/Results"
+        print("Checking for default data location at:", default_path)
         if os.path.exists(default_path):
+            print("Default data location found. Loading data...")
             self.load_data_location(default_path)
+            print("Data loaded successfully from default location.")
+        else:
+            print("Default data location not found. Please select a data location to load VTK files.")
     
     def setup_ui(self):
         """Set up the main UI"""
@@ -1017,6 +1078,7 @@ class DamVisualizationApp(QMainWindow):
         
         try:
             # Find VTK files
+            print("Scanning folder for VTK files:", folder_path)
             for file in os.listdir(folder_path):
                 if file.startswith("dcinv") and file.endswith(".vtk"):
                     number = int(file.split('_')[-1].split('.')[0])
@@ -1039,12 +1101,14 @@ class DamVisualizationApp(QMainWindow):
             self.control_panel.update_minmax_labels(self.global_min, self.global_max)
             
             # Detect available scalars from the first VTK file
+            print
             self.detect_available_scalars()
             
             # Set initial frame but don't load until Apply is clicked
             self.control_panel.frame_slider.setValue(min_frame)
             
             # Load first frame initially
+            print(f"Loading initial frame {min_frame} for preview...")
             self.update_visualization(min_frame)
             
             # Ensure camera is properly positioned for the initial view
@@ -1323,22 +1387,36 @@ class DamVisualizationApp(QMainWindow):
             # Clip mesh
             clipped = mesh.clip_box(bounds=self.bounds, invert=False)
             
-            # Resample to uniform grid
-            resampled = dvu.resample_to_uniform_grid(clipped, target_cells=self.target_cells)
-            
-            # Calculate data range for the active scalars
-            self.update_data_range(resampled)
-            
-            # Convert PyVista mesh to VTK ImageData for volume rendering
-            if hasattr(resampled, 'cast_to_image_data'):
-                vtk_data = resampled.cast_to_image_data()
+            # Handle resampling based on user preference
+            if self.enable_resampling:
+                # Resample to uniform grid for traditional volume rendering
+                resampled = dvu.resample_to_uniform_grid(clipped, target_cells=self.target_cells)
+                
+                # Calculate data range for the active scalars
+                self.update_data_range(resampled)
+                
+                # Convert PyVista mesh to VTK ImageData for volume rendering
+                if hasattr(resampled, 'cast_to_image_data'):
+                    vtk_data = resampled.cast_to_image_data()
+                else:
+                    # Fallback: resampled should be ImageData already from resample_to_uniform_grid
+                    vtk_data = resampled
+                
+                print(f"VTK data type (resampled): {type(vtk_data)}")
+                print(f"VTK data bounds: {vtk_data.GetBounds()}")
+                print(f"VTK data dimensions: {vtk_data.GetDimensions()}")
             else:
-                # Fallback: resampled should be ImageData already from resample_to_uniform_grid
-                vtk_data = resampled
-            
-            print(f"VTK data type: {type(vtk_data)}")
-            print(f"VTK data bounds: {vtk_data.GetBounds()}")
-            print(f"VTK data dimensions: {vtk_data.GetDimensions()}")
+                # Use unstructured grid directly (no resampling)
+                # Calculate data range for the active scalars
+                self.update_data_range(clipped)
+                
+                # Convert PyVista mesh to VTK UnstructuredGrid
+                vtk_data = clipped
+                
+                print(f"VTK data type (unstructured): {type(vtk_data)}")
+                print(f"VTK data bounds: {vtk_data.GetBounds()}")
+                print(f"Number of cells: {vtk_data.GetNumberOfCells()}")
+                print(f"Number of points: {vtk_data.GetNumberOfPoints()}")
             
             # Create volume mapper
             mapper = vtk.vtkSmartVolumeMapper()
@@ -1693,6 +1771,7 @@ class DamVisualizationApp(QMainWindow):
         self.colormap = self.control_panel.get_colormap()
         self.active_scalars = self.control_panel.get_active_scalars()
         self.target_cells = self.control_panel.get_target_cells()
+        self.enable_resampling = self.control_panel.is_resampling_enabled()
         self.global_min = self.control_panel.get_data_min()
         self.global_max = self.control_panel.get_data_max()
         self.show_bounds = self.control_panel.is_show_bounds_enabled()
