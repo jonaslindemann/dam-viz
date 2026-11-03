@@ -4,8 +4,10 @@
 import sys
 import os
 import vtk
+os.environ.setdefault("QT_API", "pyside6")
+
+from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 import pyvista as pv
 import damvis_utils as dvu
 
@@ -128,7 +130,7 @@ def main():
     app = QApplication(sys.argv)
     window = SimpleVolumeTest()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

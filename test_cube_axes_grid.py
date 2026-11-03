@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Test script for VTK Cube Axes (ParaView-style grid)"""
 
+import os
 import sys
 import vtk
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout
-from PyQt5.QtCore import Qt
+os.environ.setdefault("QT_API", "pyside6")
+
+from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout
+from qtpy.QtCore import Qt
 
 try:
     from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -228,7 +231,7 @@ def main():
     print("- Rotate, zoom, and pan to see how the grid adapts to camera position")
     print("- Notice tick marks, grid lines, and coordinate labels")
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

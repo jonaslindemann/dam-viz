@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Simple test script for the Qt control panel without VTK dependencies"""
 
+import os
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
-from PyQt5.QtCore import pyqtSlot
+os.environ.setdefault("QT_API", "pyside6")
+
+from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
 
 # Import just the control panel
-import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Mock the damvis_utils module to avoid import errors
@@ -68,7 +69,7 @@ class TestControlPanel(QMainWindow):
         layout = QVBoxLayout()
         
         # Add info label
-        info_label = QLabel("Test Control Panel\nAdjust parameters and click Apply")
+        info_label = QLabel("Test Control Panel\nAdjust parameters to see the emitted signals")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
@@ -83,28 +84,24 @@ class TestControlPanel(QMainWindow):
     
     def connect_test_signals(self):
         """Connect control panel signals for testing"""
-        self.control_panel.apply_changes.connect(self.on_apply_changes)
+        self.control_panel.display_changed.connect(lambda: self.on_changed("display"))
+        self.control_panel.isosurfaces_changed.connect(lambda: self.on_changed("isosurfaces"))
+        self.control_panel.data_changed.connect(lambda: self.on_changed("data"))
     
-    @pyqtSlot()
-    def on_apply_changes(self):
-        """Handle apply button click"""
-        frame = self.control_panel.get_current_frame()
-        opacity = self.control_panel.get_opacity_values()
+    def on_changed(self, kind):
+        """Handle a control panel change signal"""
+        opacity = self.control_panel.get_opacity_points()
         bounds = self.control_panel.get_bounds_values()
         colormap = self.control_panel.get_colormap()
         show_bounds = self.control_panel.is_show_bounds_enabled()
         show_colorbar = self.control_panel.is_show_colorbar_enabled()
         
-        print("Apply Changes clicked!")
-        print(f"Frame: {frame}")
+        print(f"{kind} changed!")
         print(f"Opacity values: {opacity}")
         print(f"Bounds: {bounds}")
         print(f"Colormap: {colormap}")
         print(f"Show bounds: {show_bounds}")
         print(f"Show color bar: {show_colorbar}")
-        print(f"Dirty state before apply: {self.control_panel.is_dirty()}")
-        
-        # The control panel will automatically clear the dirty flag
 
 def main():
     app = QApplication(sys.argv)
@@ -115,7 +112,7 @@ def main():
     window = TestControlPanel()
     window.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

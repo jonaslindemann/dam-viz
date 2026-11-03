@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Test script for VTK axes and scalar bar functionality"""
 
+import os
 import sys
 import vtk
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout
-from PyQt5.QtCore import Qt
+os.environ.setdefault("QT_API", "pyside6")
+
+from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout
+from qtpy.QtCore import Qt
 
 try:
     from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -190,7 +193,7 @@ def main():
     print("- Click 'Toggle Scalar Bar' to show/hide color scale")
     print("- Click 'Add Sample Data' to refresh the sphere")
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
