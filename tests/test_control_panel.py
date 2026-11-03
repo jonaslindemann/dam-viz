@@ -7,8 +7,8 @@ os.environ.setdefault("QT_API", "pyside6")
 
 from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
 
-# Import just the control panel
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Import just the control panel (the application modules are in the parent folder)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock the damvis_utils module to avoid import errors
 class MockDamvisUtils:
@@ -48,8 +48,8 @@ class MockVTK:
         def Start(self): pass
 
 sys.modules['vtk'] = MockVTK()
-sys.modules['vtk.qt'] = MockVTK()
-sys.modules['vtk.qt.QVTKRenderWindowInteractor'] = MockVTK()
+sys.modules['vtkmodules.qt'] = MockVTK()
+sys.modules['vtkmodules.qt.QVTKRenderWindowInteractor'] = MockVTK()
 sys.modules['pyvista'] = MockVTK()
 
 # Now import the control panel

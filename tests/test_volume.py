@@ -9,6 +9,9 @@ os.environ.setdefault("QT_API", "pyside6")
 from qtpy.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import pyvista as pv
+
+# The application modules are in the parent folder
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import damvis_utils as dvu
 
 class SimpleVolumeTest(QMainWindow):

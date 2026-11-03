@@ -26,7 +26,7 @@ from qtpy.QtGui import (QFont, QPalette, QKeySequence, QShortcut, QPainter, QPen
 from qtpy.QtSvg import QSvgRenderer
 
 import vtk
-from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 import pyvista as pv
 import pyqtgraph as pg
 
@@ -2851,13 +2851,20 @@ def main():
     # Set application properties
     app.setApplicationName("Dam Resistivity Visualizer")
     app.setApplicationVersion("1.0")
-       
+    app.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "app.ico")))
+
     # Create and show main window
     window = DamVisualizationApp()
     window.show()
-    
+
+    # Optional data folder on the command line
+    if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
+        window.load_data_location(os.path.abspath(sys.argv[1]))
+
     sys.exit(app.exec())
 
 
 if __name__ == "__main__":
+    # Needed for the worker processes in a frozen (PyInstaller) build; no-op otherwise
+    multiprocessing.freeze_support()
     main()

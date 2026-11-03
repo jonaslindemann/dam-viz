@@ -114,7 +114,6 @@ class VTKCubeAxesTest(QMainWindow):
         # Configure tick marks and grid
         cube_axes.SetTickLocationToBoth()
         cube_axes.SetFlyModeToOuterEdges()
-        cube_axes.SetNumberOfLabels(5)
         
         # Grid lines properties
         cube_axes.SetGridLineLocation(vtk.vtkCubeAxesActor.VTK_GRID_LINES_ALL)

@@ -6,7 +6,9 @@ from collections import OrderedDict
 
 import pyvista as pv
 import numpy as np
-from scipy.ndimage import distance_transform_edt
+
+# Voxel layers outside the mesh that are filled with nearby data (see fill_from_nearest_valid)
+FILL_LAYERS = 3
 
 def warm_up():
     """No-op used to start a worker process (and its imports) ahead of time"""
@@ -79,7 +81,7 @@ def prepare_frame(file_path, scalar_name, bounds, resample, target_cells):
 
 def fill_from_nearest_valid(values, valid, dimensions):
     """
-    Replace values of voxels outside the mesh by the nearest valid value.
+    Replace values of voxels just outside the mesh by nearby valid values.
 
     The outside voxels are hidden with a mask when rendering, but they are
     still used when interpolating samples near the boundary. Filling them
@@ -92,8 +94,25 @@ def fill_from_nearest_valid(values, valid, dimensions):
 
     # ImageData point arrays are ordered with x varying fastest
     shape = tuple(reversed(dimensions))
-    _, indices = distance_transform_edt(~valid.reshape(shape), return_indices=True)
-    filled = values.reshape(shape)[tuple(indices)]
+    filled = values.reshape(shape).copy()
+    known = valid.reshape(shape).copy()
+
+    # Grow the data outwards a few voxel layers by averaging the known
+    # neighbours. Interpolation and gradient (shading) samples only reach
+    # about two voxels beyond the data, so the rest is never seen.
+    neighbours = [(slice(2, None), slice(1, -1), slice(1, -1)), (slice(None, -2), slice(1, -1), slice(1, -1)),
+                  (slice(1, -1), slice(2, None), slice(1, -1)), (slice(1, -1), slice(None, -2), slice(1, -1)),
+                  (slice(1, -1), slice(1, -1), slice(2, None)), (slice(1, -1), slice(1, -1), slice(None, -2))]
+    for _ in range(FILL_LAYERS):
+        padded_values = np.pad(np.where(known, filled, 0.0), 1)
+        padded_known = np.pad(known, 1)
+        total = sum(padded_values[n] for n in neighbours)
+        count = sum(padded_known[n].astype(np.int32) for n in neighbours)
+        grow = ~known & (count > 0)
+        filled[grow] = total[grow] / count[grow]
+        known |= grow
+
+    filled[~known] = filled[known].mean()
     return filled.ravel()
 
 class FrameData:
